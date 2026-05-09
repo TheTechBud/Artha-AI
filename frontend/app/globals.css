@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+
+:root {
+  --surface: #0f1117;
+  --panel: #161b27;
+  --border: #1e2433;
+  --muted: #8892a4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--surface);
+  color: #e2e8f0;
+  font-family: "Inter", system-ui, sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #2d3748; }
+
+/* Plotly overrides */
+.js-plotly-plot .plotly .main-svg { background: transparent !important; }
+.modebar { display: none !important; }
+
+/* Utility classes */
+.card {
+  @apply bg-panel border border-border rounded-xl p-5;
+}
+
+.label-xs {
+  @apply text-xs font-medium text-muted uppercase tracking-wider;
+}
+
+.stat-number {
+  @apply text-2xl font-semibold tabular-nums;
+}
+
+.badge {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium;
+}
