@@ -26,10 +26,17 @@ async def upload_transactions(
     svc = TransactionService(db)
     try:
         result = svc.process_csv(USER_ID, contents)
+        pipeline = await svc.run_post_upload_pipeline(USER_ID)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
 
-    return {"data": result, "message": f"Successfully imported {result['inserted']} transactions"}
+    return {
+        "data": {
+            **result,
+            "pipeline": pipeline,
+        },
+        "message": f"Successfully imported {result['inserted']} transactions",
+    }
 
 
 @router.get("", response_model=dict)

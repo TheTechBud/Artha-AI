@@ -5,6 +5,7 @@ from analytics.engine import AnalyticsEngine
 from utils.constants import DRS_WEIGHTS, DRS_CHANGE_THRESHOLD
 from utils.formatting import drs_label, drs_color
 from observability.logger import get_logger
+from ai.orchestrator import AIOrchestrator
 
 logger = get_logger("services.drs")
 
@@ -32,6 +33,45 @@ class DRSService:
         explanation = None
         if prev and abs(score - prev.score) >= DRS_CHANGE_THRESHOLD:
             logger.info(f"DRS changed by {score - prev.score:.1f} — explanation eligible")
+
+        saved = crud.save_drs(self.db, user_id, score, components, explanation)
+
+        return {
+            "score": score,
+            "label": drs_label(score),
+            "color": drs_color(score),
+            "components": components,
+            "explanation": explanation,
+            "calculated_at": saved.calculated_at,
+        }
+
+    async def calculate_with_explanation(self, user_id: int) -> dict:
+        """
+        Compute DRS, store to history, and generate AI explanation only when
+        score delta crosses the configured threshold.
+        """
+        components = self.analytics.get_drs_components(user_id)
+
+        weighted_sum = sum(
+            components[key] * DRS_WEIGHTS[key]
+            for key in DRS_WEIGHTS
+            if key in components
+        )
+        score = round(min(100.0, max(0.0, weighted_sum * 100)), 1)
+        logger.info(f"DRS calculated for user {user_id}: {score}")
+
+        prev = crud.get_latest_drs(self.db, user_id)
+        explanation = None
+        if prev and abs(score - prev.score) >= DRS_CHANGE_THRESHOLD:
+            logger.info(f"DRS changed by {score - prev.score:.1f} — generating explanation")
+            user = crud.get_user(self.db, user_id)
+            orchestrator = AIOrchestrator()
+            explanation = await orchestrator.explain_drs(
+                name=user.name if user else "User",
+                prev_score=prev.score,
+                current_score=score,
+                components=components,
+            )
 
         saved = crud.save_drs(self.db, user_id, score, components, explanation)
 

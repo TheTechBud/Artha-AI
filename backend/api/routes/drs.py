@@ -22,7 +22,7 @@ def get_drs_history(days: int = 30, db: Session = Depends(get_db)):
 
 
 @router.post("/recalculate")
-def recalculate_drs(db: Session = Depends(get_db)):
+async def recalculate_drs(db: Session = Depends(get_db)):
     svc = DRSService(db)
-    result = svc.calculate(USER_ID)
+    result = await svc.calculate_with_explanation(USER_ID)
     return {"data": result, "message": "DRS recalculated"}
