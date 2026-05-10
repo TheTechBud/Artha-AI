@@ -35,9 +35,12 @@ export function NarrativeCard() {
   }
 
   return (
-    <div className="card space-y-4">
-      <div className="flex items-center justify-between">
-        <p className="label-xs">Weekly Narrative</p>
+    <div className="card space-y-4 border border-white/[0.06]">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="label-xs">Weekly Narrative</p>
+          <p className="text-[11px] text-muted mt-0.5">Your money story — patterns first, judgment never.</p>
+        </div>
         <div className="flex items-center gap-3">
           <span className="text-xs text-muted">{formatDate(data.generated_at)}</span>
           <button
@@ -50,17 +53,17 @@ export function NarrativeCard() {
         </div>
       </div>
 
-      <div className="prose prose-sm prose-invert max-w-none">
+      <blockquote className="border-l-2 border-teal-500/40 pl-4 py-1 space-y-3">
         {data.narrative_text.split("\n\n").map((para, i) => (
-          <p key={i} className="text-sm text-white/80 leading-relaxed mb-3 last:mb-0">
+          <p key={i} className="text-sm text-white/82 leading-relaxed">
             {para}
           </p>
         ))}
-      </div>
+      </blockquote>
 
       {data.drs_at_generation && (
         <div className="border-t border-border pt-3 flex items-center gap-2 text-xs text-muted">
-          <span>DRS at generation:</span>
+          <span>Headspace snapshot — DRS when written:</span>
           <span className="font-mono text-white">{data.drs_at_generation.toFixed(0)}</span>
         </div>
       )}

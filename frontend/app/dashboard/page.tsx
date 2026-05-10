@@ -3,6 +3,7 @@
 import { PageWrapper } from "@/components/layout/PageWrapper";
 import { RiskAlertBanner } from "@/components/cards/RiskAlertBanner";
 import { DRSCard } from "@/components/cards/DRSCard";
+import { ChartFootnote } from "@/components/cards/ChartFootnote";
 import { SpendingChart } from "@/components/charts/SpendingChart";
 import { VelocitySparkline } from "@/components/charts/VelocitySparkline";
 import { CategoryPie } from "@/components/charts/CategoryPie";
@@ -10,6 +11,58 @@ import { useAnalyticsSummary, useVelocity } from "@/hooks/useTransactions";
 import { useRecalculateDRS } from "@/hooks/useDRS";
 import { formatINR, formatINRCompact } from "@/lib/utils";
 import { CardSkeleton, ChartSkeleton } from "@/components/ui/SkeletonLoader";
+import type { AnalyticsSummary, VelocityPoint } from "@/types";
+
+function CategoryBehaviorNote({ summary }: { summary: AnalyticsSummary }) {
+  const top = summary.by_category[0];
+  const emotionalPct =
+    summary.total_spend > 0 ? (summary.emotional_spend_total / summary.total_spend) * 100 : 0;
+  return (
+    <>
+      <span className="text-white/85">{top.category}</span> leads at{" "}
+      <span className="font-mono text-white/90">{top.pct_of_total}%</span> of visible spend.
+      {emotionalPct >= 18 ? (
+        <>
+          {" "}
+          Emotional-context debits are about{" "}
+          <span className="text-amber-400/90">{emotionalPct.toFixed(0)}%</span> — worth noticing when they bunch up on weekends or late nights.
+        </>
+      ) : (
+        <>
+          {" "}
+          Emotional-context debits are a smaller slice right now; keep an eye on timing when totals climb.
+        </>
+      )}
+    </>
+  );
+}
+
+function VelocityBehaviorNote({ velocity }: { velocity: VelocityPoint[] }) {
+  const last = velocity[velocity.length - 1]?.rolling_spend ?? 0;
+  const slice = velocity.slice(-14);
+  const avg = slice.reduce((s, v) => s + v.rolling_spend, 0) / Math.max(slice.length, 1);
+  const ratio = avg > 0 ? last / avg : 1;
+  let hint = "In line with your recent baseline.";
+  if (ratio >= 1.25) hint = "Above your recent 2-week average — often bills plus discretionary stacking.";
+  else if (ratio <= 0.85) hint = "Below your recent average — calmer pace than usual.";
+  return (
+    <>
+      Rolling 7-day debit spend is{" "}
+      <span className="font-mono text-white/90">₹{(last / 1000).toFixed(1)}K</span>. {hint}
+    </>
+  );
+}
+
+function PieBehaviorNote({ summary }: { summary: AnalyticsSummary }) {
+  const top2 = summary.by_category.slice(0, 2);
+  const sumPct = top2.reduce((s, c) => s + c.pct_of_total, 0);
+  return (
+    <>
+      Top two categories cover{" "}
+      <span className="font-mono text-white/90">{sumPct.toFixed(0)}%</span> of spend — concentration here drives how “volatile” spending feels week to week.
+    </>
+  );
+}
 
 function StatCard({
   label, value, sub, positive,
@@ -109,6 +162,11 @@ export default function DashboardPage() {
             ) : (
               <EmptyState label="No spending data yet" />
             )}
+            {summary?.by_category?.length ? (
+              <ChartFootnote title="Behavioral read">
+                <CategoryBehaviorNote summary={summary} />
+              </ChartFootnote>
+            ) : null}
           </div>
 
           {/* Velocity */}
@@ -128,6 +186,11 @@ export default function DashboardPage() {
             ) : (
               <EmptyState label="No velocity data yet" />
             )}
+            {velocity && velocity.length > 0 ? (
+              <ChartFootnote title="Behavioral read">
+                <VelocityBehaviorNote velocity={velocity} />
+              </ChartFootnote>
+            ) : null}
           </div>
         </div>
 
@@ -141,6 +204,11 @@ export default function DashboardPage() {
           ) : (
             <EmptyState label="No data" />
           )}
+          {summary?.by_category && summary.by_category.length >= 2 ? (
+            <ChartFootnote title="Behavioral read">
+              <PieBehaviorNote summary={summary} />
+            </ChartFootnote>
+          ) : null}
         </div>
 
         {/* Recurring bills */}

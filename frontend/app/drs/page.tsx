@@ -5,7 +5,8 @@ import { DRSGauge } from "@/components/charts/DRSGauge";
 import { DRSLine } from "@/components/charts/VelocitySparkline";
 import { useDRS, useDRSHistory, useRecalculateDRS } from "@/hooks/useDRS";
 import { CardSkeleton, ChartSkeleton } from "@/components/ui/SkeletonLoader";
-import { componentLabel, drsColor } from "@/lib/utils";
+import { componentLabel } from "@/lib/utils";
+import { rankDrivers, weakestLinks } from "@/lib/drsInsights";
 
 export default function DRSPage() {
   const { data: drs, isLoading } = useDRS();
@@ -35,6 +36,21 @@ export default function DRSPage() {
             <>
               <p className="label-xs self-start mb-2">Current Score</p>
               <DRSGauge score={drs.score} label={drs.label} />
+              <div className="w-full mt-3 rounded-lg border border-border/80 bg-white/[0.02] px-3 py-2 text-left">
+                <p className="text-[10px] uppercase tracking-wide text-muted mb-1">What drives this score</p>
+                <p className="text-xs text-white/75 leading-relaxed">
+                  Weighted strengths:{" "}
+                  {rankDrivers(drs.components)
+                    .slice(0, 2)
+                    .map((d) => componentLabel(d.key))
+                    .join(" · ")}
+                  . Highest leverage to improve:{" "}
+                  {weakestLinks(drs.components, 2)
+                    .map((g) => componentLabel(g.key))
+                    .join(" · ")}
+                  .
+                </p>
+              </div>
               <p className="text-xs text-muted mt-2 text-center">
                 Calculated at{" "}
                 {new Date(drs.calculated_at).toLocaleTimeString("en-IN", {
@@ -43,9 +59,10 @@ export default function DRSPage() {
                 })}
               </p>
               {drs.explanation && (
-                <p className="text-sm text-white/70 mt-4 border-t border-border pt-4 leading-relaxed">
-                  {drs.explanation}
-                </p>
+                <div className="mt-4 border-t border-border pt-4 text-left w-full">
+                  <p className="text-[10px] uppercase tracking-wide text-muted mb-1.5">Why it changed</p>
+                  <p className="text-sm text-white/72 leading-relaxed">{drs.explanation}</p>
+                </div>
               )}
             </>
           ) : null}

@@ -21,6 +21,9 @@ export function useRecalculateDRS() {
     mutationFn: api.drs.recalculate,
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["drs"] });
+      qc.invalidateQueries({ queryKey: ["ai"] });
+      qc.invalidateQueries({ queryKey: ["interventions"] });
+      qc.invalidateQueries({ queryKey: ["narrative"] });
     },
   });
 }

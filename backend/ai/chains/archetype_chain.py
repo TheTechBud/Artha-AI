@@ -1,4 +1,5 @@
-from langchain_openai import ChatOpenAI
+from typing import Any
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
@@ -11,7 +12,7 @@ class ArchetypeOutput(BaseModel):
     key_signals: list[str] = Field(min_length=1, max_length=5)
 
 
-def build_archetype_chain(llm: ChatOpenAI):
+def build_archetype_chain(llm: Any):
     parser = JsonOutputParser(pydantic_object=ArchetypeOutput)
     prompt = ChatPromptTemplate.from_messages([
         ("system", ARCHETYPE_SYSTEM),

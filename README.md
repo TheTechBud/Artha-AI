@@ -13,7 +13,7 @@ AI-powered financial behavior analysis. Analyzes transactions, calculates a Deci
 | Charts      | Plotly.js + react-plotly.js         |
 | Data fetch  | TanStack React Query                |
 | Backend     | Python FastAPI                      |
-| AI          | OpenAI API + LangChain (light)      |
+| AI          | Google Gemini (AI Studio) + LangChain (light) |
 | Database    | SQLite via SQLAlchemy               |
 | Analytics   | pandas + numpy                      |
 | Logging     | Python logging + OpenTelemetry      |
@@ -109,9 +109,9 @@ artha-ai/
 git clone <your-repo>
 cd artha-ai
 
-# Copy and fill in your OpenAI key
-cp .env.example backend/.env
-# Edit backend/.env: set OPENAI_API_KEY=sk-...
+# Copy and fill in your Google AI Studio API key (Gemini)
+cp backend/.env.example backend/.env
+# Edit backend/.env: set GOOGLE_API_KEY=... (https://aistudio.google.com/apikey)
 ```
 
 ### 2. Install dependencies
@@ -173,11 +173,11 @@ App: http://localhost:3000 (redirects to `/dashboard`)
 | Risk signal scoring          | ✅ Working |
 | Risk calendar                | ✅ Working |
 | Sidebar navigation           | ✅ Working |
-| AI interventions             | ✅ Requires OpenAI key |
-| Weekly narrative             | ✅ Requires OpenAI key |
-| Archetype classification     | ✅ Requires OpenAI key |
-| DRS explanation              | ✅ Requires OpenAI key |
-| Prompt evaluations           | ✅ Requires OpenAI key |
+| AI interventions             | ✅ Full with GOOGLE_API_KEY · graceful fallback without |
+| Weekly narrative             | ✅ Full with GOOGLE_API_KEY · graceful fallback without |
+| Archetype classification     | ✅ Full with GOOGLE_API_KEY · graceful fallback without |
+| DRS explanation              | ✅ Full with GOOGLE_API_KEY · graceful fallback without |
+| Prompt evaluations           | ✅ Full with GOOGLE_API_KEY · graceful fallback without |
 
 ---
 

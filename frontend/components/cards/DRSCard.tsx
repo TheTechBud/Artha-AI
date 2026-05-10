@@ -4,6 +4,7 @@ import { useDRS } from "@/hooks/useDRS";
 import { DRSGauge } from "@/components/charts/DRSGauge";
 import { CardSkeleton } from "@/components/ui/SkeletonLoader";
 import { componentLabel, drsColor } from "@/lib/utils";
+import { rankDrivers, weakestLinks } from "@/lib/drsInsights";
 
 export function DRSCard() {
   const { data, isLoading, error } = useDRS();
@@ -18,6 +19,8 @@ export function DRSCard() {
   }
 
   const components = data.components;
+  const drivers = rankDrivers(components).slice(0, 2);
+  const gaps = weakestLinks(components, 2);
 
   return (
     <div className="card space-y-4">
@@ -35,6 +38,21 @@ export function DRSCard() {
       </div>
 
       <DRSGauge score={data.score} label={data.label} />
+
+      <div className="rounded-lg border border-border/80 bg-white/[0.02] px-3 py-2.5 space-y-1.5">
+        <p className="text-[10px] uppercase tracking-wide text-muted">Behavioral focus</p>
+        <p className="text-xs text-white/75 leading-relaxed">
+          Strongest drivers right now:{" "}
+          <span className="text-teal-400/95">
+            {drivers.map((d) => componentLabel(d.key)).join(" · ")}
+          </span>
+          . Watch{" "}
+          <span className="text-amber-400/90">
+            {gaps.map((g) => componentLabel(g.key)).join(" · ")}
+          </span>{" "}
+          — small shifts here move your score the most.
+        </p>
+      </div>
 
       {/* Component breakdown */}
       <div className="space-y-2 pt-1">
@@ -59,9 +77,10 @@ export function DRSCard() {
       </div>
 
       {data.explanation && (
-        <p className="text-xs text-muted border-t border-border pt-3 leading-relaxed">
-          {data.explanation}
-        </p>
+        <div className="border-t border-border pt-3 space-y-1">
+          <p className="text-[10px] uppercase tracking-wide text-muted">Why it moved</p>
+          <p className="text-xs text-white/70 leading-relaxed">{data.explanation}</p>
+        </div>
       )}
     </div>
   );

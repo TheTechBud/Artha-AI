@@ -21,6 +21,8 @@ export default function TransactionsPage() {
   const { data, isLoading } = useTransactions(page, 50, category);
   const upload = useUploadTransactions();
 
+  const pipeline = upload.data?.data?.pipeline;
+
   const handleFile = (file: File) => {
     if (!file.name.endsWith(".csv")) {
       alert("Only CSV files are supported");
@@ -35,7 +37,9 @@ export default function TransactionsPage() {
         <span className="text-xs text-muted animate-pulse">Processing CSV…</span>
       )}
       {upload.isSuccess && (
-        <span className="text-xs text-teal-400">✓ Imported</span>
+        <span className="text-xs text-teal-400">
+          ✓ Imported · DRS & risks refreshed
+        </span>
       )}
       <button
         onClick={() => fileRef.current?.click()}
@@ -59,6 +63,38 @@ export default function TransactionsPage() {
       subtitle={data ? `${data.total} transactions total` : undefined}
       action={UploadZone}
     >
+      {upload.isSuccess && pipeline ? (
+        <div className="mb-5 rounded-xl border border-teal-500/25 bg-teal-500/[0.06] px-4 py-3">
+          <p className="text-sm text-teal-400 font-medium">Upload complete — profile recomputed</p>
+          <p className="text-xs text-muted mt-1.5 leading-relaxed">
+            Latest DRS{" "}
+            <span className="font-mono text-white/90">{pipeline.drs_score.toFixed(1)}</span>
+            {" · "}
+            Risk index{" "}
+            <span className="font-mono text-white/90">
+              {(pipeline.risk_aggregate * 100).toFixed(0)}%
+            </span>
+            {pipeline.archetype ? (
+              <>
+                {" · "}
+                Archetype refreshed ({pipeline.archetype.replace(/_/g, " ")})
+              </>
+            ) : null}
+            {pipeline.intervention_generated ? (
+              <>
+                {" · "}
+                New intervention ({pipeline.intervention_generated.urgency})
+              </>
+            ) : (
+              <>
+                {" · "}
+                No new intervention — aggregate risk below threshold
+              </>
+            )}
+          </p>
+        </div>
+      ) : null}
+
       {/* Drop zone overlay */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}

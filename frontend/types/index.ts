@@ -142,3 +142,23 @@ export interface APIResponse<T> {
   meta?: Record<string, unknown>;
   timestamp?: string;
 }
+
+// ── Upload (multipart returns full envelope) ──────────────────────────────────
+
+export interface UploadPipelineResult {
+  drs_score: number;
+  archetype?: string;
+  risk_aggregate: number;
+  intervention_generated: { id: number; urgency: string } | null;
+}
+
+export interface TransactionUploadData {
+  inserted: number;
+  rows_processed: number;
+  pipeline?: UploadPipelineResult;
+}
+
+export interface TransactionUploadEnvelope {
+  data: TransactionUploadData;
+  message: string;
+}

@@ -3,6 +3,7 @@ import type {
   TransactionList, Intervention, Narrative,
   Archetype, RiskPayload, CalendarDay, APIResponse,
   VelocityPoint, RecurringItem,
+  TransactionUploadEnvelope,
 } from "@/types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -62,7 +63,7 @@ export const api = {
       if (category) params.set("category", category);
       return get<TransactionList>(`/api/transactions?${params}`);
     },
-    upload: async (file: File) => {
+    upload: async (file: File): Promise<TransactionUploadEnvelope> => {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch(`${BASE}/api/transactions/upload`, { method: "POST", body: form });

@@ -1,4 +1,5 @@
-from langchain_openai import ChatOpenAI
+from typing import Any
+
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
@@ -13,7 +14,7 @@ class InterventionOutput(BaseModel):
     savings_potential: float = Field(ge=0)
 
 
-def build_intervention_chain(llm: ChatOpenAI):
+def build_intervention_chain(llm: Any):
     parser = JsonOutputParser(pydantic_object=InterventionOutput)
     prompt = ChatPromptTemplate.from_messages([
         ("system", INTERVENTION_SYSTEM),

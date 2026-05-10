@@ -5,6 +5,6 @@ Do not use jargon. Address the user by name."""
 EXPLAIN_HUMAN = """User: {name}
 Previous DRS: {prev_score}
 Current DRS: {current_score}
-Change: {delta:+.1f} points
+Change: {delta} points
 Component Scores: {components}
 Explain what changed and why, in 2 sentences."""

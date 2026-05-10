@@ -12,7 +12,10 @@ export function InterventionCard({ item }: InterventionCardProps) {
   const dismiss = useDismissIntervention();
 
   return (
-    <div className="card space-y-3 animate-fade-in">
+    <div className="card space-y-3 animate-fade-in border border-white/[0.06] shadow-[0_0_0_1px_rgba(20,184,166,0.06)]">
+      <p className="text-[11px] text-muted leading-relaxed">
+        Artha noticed a pattern — here is one caring, concrete step. No guilt, just clarity.
+      </p>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <span className={`badge ${urgencyBg(item.urgency)}`}>
@@ -30,12 +33,12 @@ export function InterventionCard({ item }: InterventionCardProps) {
       <h3 className="text-sm font-semibold text-white leading-snug">{item.title}</h3>
 
       <div className="space-y-2">
-        <div className="bg-white/3 rounded-lg px-3 py-2.5 border border-border">
-          <p className="text-xs text-muted mb-0.5 font-medium uppercase tracking-wide">Action</p>
+        <div className="bg-white/[0.04] rounded-lg px-3 py-2.5 border border-border">
+          <p className="text-xs text-muted mb-0.5 font-medium uppercase tracking-wide">Try this today</p>
           <p className="text-sm text-white/90 leading-relaxed">{item.action}</p>
         </div>
-        <div className="bg-white/3 rounded-lg px-3 py-2.5 border border-border">
-          <p className="text-xs text-muted mb-0.5 font-medium uppercase tracking-wide">Why</p>
+        <div className="bg-white/[0.04] rounded-lg px-3 py-2.5 border border-border">
+          <p className="text-xs text-muted mb-0.5 font-medium uppercase tracking-wide">The pattern behind it</p>
           <p className="text-sm text-white/70 leading-relaxed">{item.reason}</p>
         </div>
       </div>
@@ -46,7 +49,7 @@ export function InterventionCard({ item }: InterventionCardProps) {
           disabled={dismiss.isPending}
           className="text-xs text-muted hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5"
         >
-          {dismiss.isPending ? "Dismissing…" : "Dismiss"}
+          {dismiss.isPending ? "Dismissing…" : "Not now"}
         </button>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import os
-from openai import AsyncOpenAI
-from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
 from ai.chains.archetype_chain import build_archetype_chain
 from ai.chains.narrative_chain import build_narrative_chain
 from ai.chains.intervention_chain import build_intervention_chain
@@ -25,35 +25,48 @@ FALLBACK_INTERVENTION = {
 
 
 class AIOrchestrator:
+    """
+    AI entry point: LangChain + Google Gemini (Google AI Studio).
+    Uses GOOGLE_API_KEY. If missing, all AI paths use deterministic/template fallbacks.
+    """
+
     def __init__(self):
-        model = os.getenv("OPENAI_MODEL", "gpt-4o")
-        model_fast = os.getenv("OPENAI_MODEL_FAST", "gpt-4o-mini")
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GOOGLE_API_KEY")
         self.ai_enabled = bool(api_key and api_key.strip())
+
+        model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        model_fast = os.getenv("GEMINI_MODEL_FAST", "gemini-2.0-flash")
 
         self.llm = None
         self.llm_narrative = None
         self.llm_fast = None
-        self.openai_async = None
         self.chains = {}
+        self._explain_chain = None
 
         if not self.ai_enabled:
             logger.warning(
-                "OPENAI_API_KEY is missing. AI features are running in fallback mode; "
+                "GOOGLE_API_KEY is missing. AI features are running in fallback mode; "
                 "deterministic analytics remain fully enabled."
             )
             return
 
-        self.llm = ChatOpenAI(model=model, temperature=0.3)
-        self.llm_narrative = ChatOpenAI(model=model, temperature=0.7)
-        self.llm_fast = ChatOpenAI(model=model_fast, temperature=0.2)
-        self.openai_async = AsyncOpenAI()
+        self.llm = ChatGoogleGenerativeAI(model=model, temperature=0.3)
+        self.llm_narrative = ChatGoogleGenerativeAI(model=model, temperature=0.7)
+        self.llm_fast = ChatGoogleGenerativeAI(model=model_fast, temperature=0.2)
 
         self.chains = {
-            "archetype": build_archetype_chain(self.llm_fast),      # cheaper model for classification
-            "narrative": build_narrative_chain(self.llm_narrative),  # creative model for narrative
-            "intervention": build_intervention_chain(self.llm),      # balanced for interventions
+            "archetype": build_archetype_chain(self.llm_fast),
+            "narrative": build_narrative_chain(self.llm_narrative),
+            "intervention": build_intervention_chain(self.llm),
         }
+
+        explain_prompt = ChatPromptTemplate.from_messages(
+            [
+                ("system", EXPLAIN_SYSTEM),
+                ("human", EXPLAIN_HUMAN),
+            ]
+        )
+        self._explain_chain = explain_prompt | self.llm
 
     async def classify_archetype(self, context: dict) -> dict:
         if not self.ai_enabled:
@@ -95,7 +108,7 @@ class AIOrchestrator:
             return FALLBACK_INTERVENTION
 
     async def explain_drs(self, name: str, prev_score: float, current_score: float, components: dict) -> str:
-        """Direct OpenAI call — no chain needed for this simple task."""
+        """Gemini via LangChain — short DRS delta explanation."""
         delta = current_score - prev_score
         components_str = ", ".join(f"{k}: {v:.2f}" for k, v in components.items())
         if not self.ai_enabled:
@@ -106,22 +119,16 @@ class AIOrchestrator:
                 f"Biggest signals now are: {components_str}."
             )
         try:
-            response = await self.openai_async.chat.completions.create(
-                model=os.getenv("OPENAI_MODEL", "gpt-4o"),
-                messages=[
-                    {"role": "system", "content": EXPLAIN_SYSTEM},
-                    {"role": "user", "content": EXPLAIN_HUMAN.format(
-                        name=name,
-                        prev_score=prev_score,
-                        current_score=current_score,
-                        delta=delta,
-                        components=components_str,
-                    )},
-                ],
-                max_tokens=150,
-                temperature=0.3,
-            )
-            return response.choices[0].message.content
+            payload = {
+                "name": name,
+                "prev_score": prev_score,
+                "current_score": current_score,
+                "delta": f"{delta:+.1f}",
+                "components": components_str,
+            }
+            out = await self._explain_chain.ainvoke(payload)
+            text = out.content if hasattr(out, "content") else str(out)
+            return (text or "").strip()
         except Exception as e:
             logger.error(f"DRS explanation failed: {e}")
             direction = "improved" if delta > 0 else "dropped"
