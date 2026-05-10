@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
 
 const NAV = [
   { href: "/dashboard",      label: "Dashboard",      icon: "⬡" },
@@ -13,8 +15,23 @@ const NAV = [
   { href: "/narrative",      label: "Narrative",       icon: "✦" },
 ];
 
+function avatarInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+  return (parts[0]?.slice(0, 2) ?? "?").toUpperCase();
+}
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: demoUser } = useQuery({
+    queryKey: ["demo-user"],
+    queryFn: () => api.demo.user(),
+  });
+
+  const displayName = demoUser?.name ?? "Demo user";
+  const initials = demoUser ? avatarInitials(demoUser.name) : "—";
 
   return (
     <aside className="w-56 shrink-0 flex flex-col h-full bg-panel border-r border-border">
@@ -56,11 +73,11 @@ export function Sidebar() {
       {/* User footer */}
       <div className="px-4 py-4 border-t border-border">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold text-white shrink-0">
-            R
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-[10px] font-bold text-white shrink-0 leading-none">
+            {initials}
           </div>
           <div className="min-w-0">
-            <p className="text-xs font-medium text-white truncate">Riya Sharma</p>
+            <p className="text-xs font-medium text-white truncate">{displayName}</p>
             <p className="text-[10px] text-muted">Demo Account</p>
           </div>
         </div>

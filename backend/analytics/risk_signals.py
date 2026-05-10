@@ -1,9 +1,12 @@
+import calendar
+
 import pandas as pd
 import numpy as np
 from datetime import date, datetime
 from utils.constants import RISK_SIGNAL_WEIGHTS
 from analytics.velocity import detect_velocity_spike
-from utils.date_utils import pct_month_elapsed, days_in_month
+from utils.date_utils import days_in_month
+from analytics.reference_period import reference_month_start, filter_df_to_calendar_month
 
 
 def detect_salary_gap(data: dict) -> float:
@@ -21,13 +24,21 @@ def detect_salary_gap(data: dict) -> float:
     if monthly_income == 0:
         return 0.0
 
-    month_start = today.replace(day=1)
-    this_month = df[
-        (df["type"] == "debit") &
-        (pd.to_datetime(df["date"]).dt.date >= month_start)
-    ]
-    spent = this_month["amount"].sum()
-    pct_elapsed = pct_month_elapsed(today)
+    month_start = reference_month_start(df, today)
+    month_slice = filter_df_to_calendar_month(df, month_start)
+    debits_m = month_slice[month_slice["type"] == "debit"]
+    spent = debits_m[~debits_m["category"].isin(["Savings"])]["amount"].sum()
+
+    ref_key = (month_start.year, month_start.month)
+    now_key = (today.year, today.month)
+    dim = calendar.monthrange(today.year, today.month)[1]
+    if ref_key < now_key:
+        pct_elapsed = 1.0
+    elif ref_key == now_key:
+        pct_elapsed = today.day / dim
+    else:
+        pct_elapsed = 1.0
+
     pct_used = spent / monthly_income
 
     gap_pressure = pct_used - pct_elapsed
@@ -46,11 +57,9 @@ def detect_budget_overflow(data: dict) -> float:
         return 0.0
 
     today = date.today()
-    month_start = today.replace(day=1)
-    this_month = df[
-        (df["type"] == "debit") &
-        (pd.to_datetime(df["date"]).dt.date >= month_start)
-    ]
+    month_start = reference_month_start(df, today)
+    this_month = filter_df_to_calendar_month(df, month_start)
+    this_month = this_month[this_month["type"] == "debit"]
 
     overflow_scores = []
     for rule in budget_rules:
@@ -109,10 +118,10 @@ def detect_missed_recurring(data: dict) -> float:
             except (ValueError, TypeError):
                 pass
 
-    month_start = today.replace(day=1)
-    spent = df[
-        (df["type"] == "debit") & (pd.to_datetime(df["date"]).dt.date >= month_start)
-    ]["amount"].sum()
+    month_start = reference_month_start(df, today)
+    month_slice = filter_df_to_calendar_month(df, month_start)
+    debits_m = month_slice[month_slice["type"] == "debit"]
+    spent = debits_m[~debits_m["category"].isin(["Savings"])]["amount"].sum()
 
     available = monthly_income - spent
     if upcoming_total == 0:

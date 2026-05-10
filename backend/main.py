@@ -9,7 +9,7 @@ from db.database import init_db
 from db.crud import get_or_create_demo_user
 from db.database import SessionLocal
 
-from api.routes import transactions, analytics, drs, interventions, narrative, ai
+from api.routes import transactions, analytics, drs, interventions, narrative, ai, demo
 from api.middleware.logging import log_requests
 from api.middleware.error_handler import global_error_handler
 from observability.logger import get_logger
@@ -44,6 +44,7 @@ app.include_router(drs.router)
 app.include_router(interventions.router)
 app.include_router(narrative.router)
 app.include_router(ai.router)
+app.include_router(demo.router)
 
 
 @app.on_event("startup")

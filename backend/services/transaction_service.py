@@ -162,7 +162,8 @@ class TransactionService:
 
     def _clean(self, df: pd.DataFrame) -> pd.DataFrame:
         df = df.dropna(subset=["date", "amount"])
-        df["date"] = pd.to_datetime(df["date"], errors="coerce", dayfirst=True)
+        # Seed CSVs use ISO dates (YYYY-MM-DD); dayfirst=True mis-parses them into wrong months.
+        df["date"] = pd.to_datetime(df["date"], errors="coerce")
         df = df.dropna(subset=["date"])
         df["amount"] = pd.to_numeric(df["amount"].astype(str).str.replace(",", ""), errors="coerce").abs()
         df = df.dropna(subset=["amount"])

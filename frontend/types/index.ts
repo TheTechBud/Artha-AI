@@ -1,3 +1,14 @@
+// ── Demo user (single slot, id=1) ──────────────────────────────────────────────
+
+export interface DemoUser {
+  id: number;
+  name: string;
+  email: string | null;
+  archetype: string | null;
+  monthly_income: number;
+  salary_day: number | null;
+}
+
 // ── Core entities ──────────────────────────────────────────────────────────────
 
 export interface Transaction {

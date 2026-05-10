@@ -1,19 +1,16 @@
 import pandas as pd
 from datetime import date
 
+from analytics.reference_period import filter_df_to_calendar_month
 
-def compute_budget_usage(df: pd.DataFrame, budget_rules: list) -> list[dict]:
+
+def compute_budget_usage(df: pd.DataFrame, budget_rules: list, month_start: date) -> list[dict]:
     """
-    For each budget rule, compute how much has been spent this month
+    For each budget rule, compute how much has been spent in the given calendar month
     and what % of the limit that represents.
     """
-    today = date.today()
-    month_start = today.replace(day=1)
-
-    this_month = df[
-        (df["type"] == "debit") &
-        (pd.to_datetime(df["date"]).dt.date >= month_start)
-    ]
+    month_df = filter_df_to_calendar_month(df, month_start)
+    this_month = month_df[month_df["type"] == "debit"]
 
     result = []
     for rule in budget_rules:
@@ -31,7 +28,7 @@ def compute_budget_usage(df: pd.DataFrame, budget_rules: list) -> list[dict]:
     return sorted(result, key=lambda x: x["usage_pct"], reverse=True)
 
 
-def budget_adherence_score(df: pd.DataFrame, budget_rules: list) -> float:
+def budget_adherence_score(df: pd.DataFrame, budget_rules: list, month_start: date) -> float:
     """
     C1 component for DRS. Returns 0–1.
     Starts penalizing at 80% usage, hits 0 at 100%+.
@@ -39,14 +36,15 @@ def budget_adherence_score(df: pd.DataFrame, budget_rules: list) -> float:
     if not budget_rules:
         return 0.7  # neutral if no rules set
 
-    usage = compute_budget_usage(df, budget_rules)
+    usage = compute_budget_usage(df, budget_rules, month_start)
     if not usage:
         return 0.7
 
     scores = []
     for u in usage:
         usage_ratio = u["spent"] / u["limit"] if u["limit"] > 0 else 0
-        category_score = max(0.0, 1 - max(0.0, usage_ratio - 0.8) / 0.2)
+        # Penalize above ~68% of limit for clearer stress-spender vs planner spread
+        category_score = max(0.0, 1 - max(0.0, usage_ratio - 0.68) / 0.32)
         scores.append(category_score)
 
     return round(sum(scores) / len(scores), 4)

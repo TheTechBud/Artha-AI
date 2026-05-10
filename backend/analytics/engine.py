@@ -1,3 +1,5 @@
+import calendar
+
 import pandas as pd
 import numpy as np
 from datetime import date, datetime
@@ -5,7 +7,16 @@ from sqlalchemy.orm import Session
 
 from db import crud
 from db.models import User, Transaction
-from utils.constants import CATEGORY_RULES
+from utils.constants import (
+    CATEGORY_RULES,
+    DRS_SAVINGS_MARGIN_TARGET,
+    DRS_SAVINGS_INVEST_BLEND,
+    DRS_SAVINGS_INVEST_SCALE,
+    DRS_SAVINGS_INVEST_CEILING,
+    DRS_VELOCITY_CV_SCALE,
+    DRS_VELOCITY_CV_CAP,
+)
+from analytics.reference_period import reference_month_start, filter_df_to_calendar_month
 from analytics.velocity import compute_velocity, velocity_to_chart_data, detect_velocity_spike
 from analytics.recurring import detect_recurring, tag_recurring_in_df
 from analytics.salary_cycle import flag_emotional_transactions, emotional_spend_score, salary_gap_score
@@ -133,35 +144,59 @@ class AnalyticsEngine:
 
         monthly_income = user.monthly_income if user else 0
         salary_day = user.salary_day if user and user.salary_day else 1
+        today = date.today()
+        month_ref = reference_month_start(df, today)
 
         # C1
-        c1 = budget_adherence_score(df, budget_rules)
+        c1 = budget_adherence_score(df, budget_rules, month_ref)
 
-        # C2 — velocity stability
+        # C2 — velocity stability (normalized spend lumpiness)
         velocity = compute_velocity(df)
         if not velocity.empty and len(velocity) > 1:
             mean_v = velocity["rolling_spend"].mean()
             std_v = velocity["rolling_spend"].std()
             cv = std_v / mean_v if mean_v > 0 else 1.0
-            c2 = round(max(0.0, 1.0 - cv), 4)
+            cv_adj = min(float(cv), DRS_VELOCITY_CV_CAP)
+            c2 = round(max(0.0, 1.0 - min(1.0, cv_adj * DRS_VELOCITY_CV_SCALE)), 4)
         else:
             c2 = 0.5
 
-        # C3 — savings rate
-        credits = df[df["type"] == "credit"]["amount"].sum()
-        debits = df[df["type"] == "debit"]["amount"].sum()
-        if monthly_income > 0:
-            savings_rate = (monthly_income - debits) / monthly_income
-        elif credits > 0:
-            savings_rate = (credits - debits) / credits
+        # C3 — savings margin + Savings-category consistency (multi-month aware)
+        periods = sorted(pd.to_datetime(df["date"]).dt.to_period("M").unique())
+        debits_all = df[df["type"] == "debit"]
+        if not len(periods):
+            c3 = 0.5
         else:
-            savings_rate = 0.0
-        c3 = round(min(1.0, max(0.0, savings_rate / 0.20)), 4)
+            margins = []
+            for p in periods:
+                sub = df[pd.to_datetime(df["date"]).dt.to_period("M") == p]
+                deb_m = sub[sub["type"] == "debit"]["amount"].sum()
+                if monthly_income > 0:
+                    m = (monthly_income - deb_m) / monthly_income
+                    margins.append(max(0.0, min(1.0, m)))
+            avg_margin = float(np.mean(margins)) if margins else 0.0
+            c3_core = min(1.0, max(0.0, avg_margin / DRS_SAVINGS_MARGIN_TARGET))
 
-        # C4 — recurring coverage
+            n_months = len(periods)
+            denom_inc = monthly_income * n_months if monthly_income > 0 else 0.0
+            savings_debits = debits_all[debits_all["category"] == "Savings"]["amount"].sum()
+            invest_share = savings_debits / max(denom_inc, 1.0)
+            invest_component = min(
+                DRS_SAVINGS_INVEST_CEILING,
+                invest_share * DRS_SAVINGS_INVEST_SCALE,
+            )
+
+            c3 = (
+                c3_core * (1.0 - DRS_SAVINGS_INVEST_BLEND)
+                + invest_component * DRS_SAVINGS_INVEST_BLEND
+            )
+            c3 = round(min(1.0, max(0.0, c3)), 4)
+            # Compress very high savings/investment scores so planners land ~65–80 DRS, not mid‑80s
+            if c3 > 0.68:
+                c3 = round(0.52 + (c3 - 0.68) * 0.35, 4)
+
+        # C4 — recurring coverage (headroom vs obligations due soon)
         recurring = detect_recurring(df)
-        today = date.today()
-        import calendar
         days_left = calendar.monthrange(today.year, today.month)[1] - today.day
         upcoming_total = 0.0
         for r in recurring:
@@ -174,10 +209,9 @@ class AnalyticsEngine:
                 except (ValueError, TypeError):
                     pass
 
-        month_start = today.replace(day=1)
-        spent_this_cycle = df[
-            (df["type"] == "debit") & (pd.to_datetime(df["date"]).dt.date >= month_start)
-        ]["amount"].sum()
+        month_df = filter_df_to_calendar_month(df, month_ref)
+        debits_m = month_df[month_df["type"] == "debit"]
+        spent_this_cycle = debits_m[~debits_m["category"].isin(["Savings"])]["amount"].sum()
         available_cash = monthly_income - spent_this_cycle
         c4 = min(1.0, available_cash / upcoming_total) if upcoming_total > 0 else 1.0
         c4 = round(max(0.0, c4), 4)
@@ -186,7 +220,7 @@ class AnalyticsEngine:
         c5 = emotional_spend_score(df)
 
         # C6 — salary gap
-        c6 = salary_gap_score(df, monthly_income, salary_day)
+        c6 = salary_gap_score(df, monthly_income, salary_day, month_ref, today)
 
         return {
             "budget_adherence": c1,

@@ -4,6 +4,7 @@ import type {
   Archetype, RiskPayload, CalendarDay, APIResponse,
   VelocityPoint, RecurringItem,
   TransactionUploadEnvelope,
+  DemoUser,
 } from "@/types";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -42,6 +43,10 @@ async function patch<T>(path: string): Promise<T> {
 // ── Endpoints ──────────────────────────────────────────────────────────────────
 
 export const api = {
+  demo: {
+    user: () => get<DemoUser>("/api/demo/user"),
+  },
+
   // DRS
   drs: {
     current: () => get<DRSResult>("/api/drs/current"),
